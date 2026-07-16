@@ -25,6 +25,23 @@ class DriverAuthRepository {
     }
   }
 
+  Future<void> logout() async {
+    try {
+      await _client.post<void>(ApiEndpoints.logout);
+    } on DioException catch (error) {
+      if (_isNetworkFailure(error)) rethrow;
+      throw DriverAuthException(_messageFrom(error));
+    }
+  }
+
+  bool _isNetworkFailure(DioException error) {
+    return error.response == null ||
+        error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout;
+  }
+
   String _messageFrom(DioException error) {
     final data = error.response?.data;
     if (data is Map<String, dynamic>) {

@@ -24,6 +24,7 @@ class DriverAuthNotifier extends StateNotifier<AsyncValue<void>> {
   DriverAuthNotifier(this._service) : super(const AsyncData(null));
 
   final DriverAuthService _service;
+  bool loggedOutLocally = false;
 
   Future<void> login({required String email, required String password}) async {
     final emailError = validateEmail(email);
@@ -37,6 +38,16 @@ class DriverAuthNotifier extends StateNotifier<AsyncValue<void>> {
     state = await AsyncValue.guard(
       () => _service.login(email: email.trim(), password: password),
     );
+  }
+
+  Future<void> logout() async {
+    state = const AsyncLoading();
+    try {
+      loggedOutLocally = await _service.logout();
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
   }
 
   String? validateEmail(String value) {
