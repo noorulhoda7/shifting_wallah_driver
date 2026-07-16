@@ -7,9 +7,9 @@ import 'package:shifting_wallah_driver/features/dashboard/presentation/home_scre
 final appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
   routes: [
-    GoRoute(path: AppRoutes.splash, builder: (_, __) => const SplashScreen()),
-    GoRoute(path: AppRoutes.login, builder: (_, __) => const LoginScreen()),
-    GoRoute(path: AppRoutes.home, builder: (_, __) => const HomeScreen()),
+    GoRoute(path: AppRoutes.splash, builder: (_, _) => const SplashScreen()),
+    GoRoute(path: AppRoutes.login, builder: (_, _) => const LoginScreen()),
+    GoRoute(path: AppRoutes.home, builder: (_, _) => const HomeScreen()),
   ],
 );
 
