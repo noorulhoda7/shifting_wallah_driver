@@ -1,5 +1,5 @@
 abstract final class ApiEndpoints {
-  static const login = '/driver/login';
+  static const login = '/api/driver/login';
   static const logout = '/driver/logout';
   static const me = '/driver/me';
   static const bookings = '/driver/bookings';
