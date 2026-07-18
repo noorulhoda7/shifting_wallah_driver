@@ -16,11 +16,22 @@ class DriverDashboardRepository {
       results.last.data ?? {},
     );
   }
+
+  Future<void> updateAvailability(bool online) {
+    return _client.post<void>(
+      ApiEndpoints.availability,
+      data: {'availability': online ? 'online' : 'offline'},
+    );
+  }
 }
 
 class DriverDashboard {
   const DriverDashboard({
     required this.driverName,
+    required this.email,
+    required this.phone,
+    required this.vehicle,
+    required this.driverId,
     required this.availability,
     required this.assignedCount,
     required this.acceptedCount,
@@ -30,6 +41,10 @@ class DriverDashboard {
   });
 
   final String driverName;
+  final String email;
+  final String phone;
+  final String vehicle;
+  final String driverId;
   final String availability;
   final int assignedCount;
   final int acceptedCount;
@@ -54,8 +69,12 @@ class DriverDashboard {
 
     return DriverDashboard(
       driverName: '${driver['name'] ?? driver['driver_name'] ?? 'Driver'}',
+      email: '${driver['email'] ?? '-'}',
+      phone: '${driver['phone'] ?? driver['mobile'] ?? '-'}',
+      vehicle: '${driver['vehicle'] ?? driver['vehicle_type'] ?? '-'}',
+      driverId: '${driver['driver_id'] ?? driver['id'] ?? '-'}',
       availability:
-          '${driver['availability'] ?? driver['status'] ?? 'Unknown'}',
+          '${driver['availability'] ?? driver['status'] ?? 'offline'}',
       assignedCount: _int(counts['assigned_count']) ?? count('assigned'),
       acceptedCount: _int(counts['accepted_count']) ?? count('accepted'),
       ongoingCount: _int(counts['ongoing_count']) ?? count('ongoing'),

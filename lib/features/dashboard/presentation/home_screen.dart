@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shifting_wallah_driver/app/router.dart';
+import 'package:shifting_wallah_driver/core/network/dio_provider.dart';
 import 'package:shifting_wallah_driver/features/auth/data/driver_auth_repository.dart';
 import 'package:shifting_wallah_driver/features/auth/providers/driver_auth_provider.dart';
 import 'package:shifting_wallah_driver/features/dashboard/data/driver_dashboard_repository.dart';
@@ -68,12 +69,34 @@ class HomeScreen extends ConsumerWidget {
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              Text(
-                dashboard.driverName,
-                style: Theme.of(context).textTheme.headlineSmall,
+              _ProfileHeader(dashboard),
+              const SizedBox(height: 16),
+              Consumer(
+                builder: (context, ref, _) {
+                  final state = ref.watch(_availabilityUpdateProvider);
+                  return SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Availability'),
+                    subtitle: Text(
+                      _isOnline(dashboard.availability) ? 'Online' : 'Offline',
+                    ),
+                    value: _isOnline(dashboard.availability),
+                    onChanged: state.isLoading
+                        ? null
+                        : (value) => _updateAvailability(context, ref, value),
+                    secondary: state.isLoading
+                        ? const SizedBox.square(
+                            dimension: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            _isOnline(dashboard.availability)
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_unchecked,
+                          ),
+                  );
+                },
               ),
-              const SizedBox(height: 4),
-              Text('Availability: ${dashboard.availability}'),
               const SizedBox(height: 16),
               Wrap(
                 spacing: 8,
@@ -104,6 +127,107 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+final _availabilityUpdateProvider = StateProvider<AsyncValue<void>>(
+  (_) => const AsyncData(null),
+);
+
+bool _isOnline(String value) {
+  final text = value.toLowerCase();
+  return text == 'online' || text == 'available' || text == '1';
+}
+
+Future<void> _updateAvailability(
+  BuildContext context,
+  WidgetRef ref,
+  bool online,
+) async {
+  final notifier = ref.read(_availabilityUpdateProvider.notifier);
+  notifier.state = const AsyncLoading();
+  try {
+    await DriverDashboardRepository(
+      DioProvider().createClient(),
+    ).updateAvailability(online);
+    ref.invalidate(driverDashboardProvider);
+    notifier.state = const AsyncData(null);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(online ? 'You are online.' : 'You are offline.')),
+    );
+  } catch (error, stackTrace) {
+    notifier.state = AsyncError(error, stackTrace);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(error.toString()),
+        action: SnackBarAction(
+          label: 'Retry',
+          onPressed: () => _updateAvailability(context, ref, online),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader(this.dashboard);
+
+  final DriverDashboard dashboard;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 32,
+          child: Text(
+            dashboard.driverName.isEmpty
+                ? 'D'
+                : dashboard.driverName.characters.first.toUpperCase(),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                dashboard.driverName,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              _ProfileLine(Icons.badge, 'Driver ID', dashboard.driverId),
+              _ProfileLine(Icons.email, 'Email', dashboard.email),
+              _ProfileLine(Icons.phone, 'Phone', dashboard.phone),
+              _ProfileLine(Icons.local_shipping, 'Vehicle', dashboard.vehicle),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileLine extends StatelessWidget {
+  const _ProfileLine(this.icon, this.label, this.value);
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Row(
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: 8),
+        Text('$label: ${value.isEmpty ? '-' : value}'),
+      ],
+    ),
+  );
 }
 
 class _MetricChip extends StatelessWidget {
