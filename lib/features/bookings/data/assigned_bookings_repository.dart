@@ -31,7 +31,17 @@ class AssignedBookingsRepository {
     final value = data['data'] is Map<String, dynamic> ? data['data'] : data;
     return value.isEmpty ? null : BookingDetails.fromJson(value);
   }
+
+  Future<void> runWorkflow(String id, BookingWorkflowAction action) async {
+    await _client.post<void>(switch (action) {
+      BookingWorkflowAction.accept => ApiEndpoints.accept(id),
+      BookingWorkflowAction.start => ApiEndpoints.start(id),
+      BookingWorkflowAction.complete => ApiEndpoints.complete(id),
+    });
+  }
 }
+
+enum BookingWorkflowAction { accept, start, complete }
 
 class AssignedBooking {
   const AssignedBooking({

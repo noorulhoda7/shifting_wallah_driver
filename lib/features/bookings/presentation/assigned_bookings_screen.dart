@@ -139,6 +139,11 @@ final bookingDetailsProvider = FutureProvider.family<BookingDetails?, String>(
   ).fetchBookingDetails(id),
 );
 
+final _bookingWorkflowStateProvider =
+    StateProvider.family<AsyncValue<void>, String>(
+      (_, _) => const AsyncData(null),
+    );
+
 class BookingDetailsScreen extends ConsumerWidget {
   const BookingDetailsScreen(this.bookingId, {super.key});
 
@@ -222,7 +227,7 @@ class BookingDetailsScreen extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _WorkflowButton(status: booking.status),
+                    _WorkflowButton(booking: booking),
                   ],
                 ),
               ),
@@ -255,23 +260,85 @@ class _StatusBadge extends StatelessWidget {
 }
 
 class _WorkflowButton extends StatelessWidget {
-  const _WorkflowButton({required this.status});
+  const _WorkflowButton({required this.booking});
 
-  final String status;
+  final BookingDetails booking;
 
   @override
   Widget build(BuildContext context) {
-    final normalized = status.toLowerCase().replaceAll('_', ' ');
-    final label = switch (normalized) {
-      'assigned' => 'Accept Booking',
-      'accepted' => 'Start Move',
-      'on going' || 'ongoing' => 'Complete Move',
-      'completed' => 'Completed',
-      _ => 'Accept Booking',
+    return Consumer(
+      builder: (context, ref, _) {
+        final action = _actionFor(booking.status);
+        final state = ref.watch(_bookingWorkflowStateProvider(booking.id));
+        if (action == null) {
+          return const Center(child: _StatusBadge('Completed'));
+        }
+        return FilledButton(
+          onPressed: state.isLoading
+              ? null
+              : () => _runWorkflow(context, ref, booking.id, action),
+          child: state.isLoading
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(_labelFor(action)),
+        );
+      },
+    );
+  }
+
+  BookingWorkflowAction? _actionFor(String status) {
+    return switch (status.toLowerCase().replaceAll('_', ' ')) {
+      'assigned' => BookingWorkflowAction.accept,
+      'accepted' => BookingWorkflowAction.start,
+      'on going' || 'ongoing' => BookingWorkflowAction.complete,
+      'completed' => null,
+      _ => BookingWorkflowAction.accept,
     };
-    return normalized == 'completed'
-        ? Center(child: _StatusBadge(label))
-        : FilledButton(onPressed: () {}, child: Text(label));
+  }
+
+  String _labelFor(BookingWorkflowAction action) {
+    return switch (action) {
+      BookingWorkflowAction.accept => 'Accept Booking',
+      BookingWorkflowAction.start => 'Start Move',
+      BookingWorkflowAction.complete => 'Complete Move',
+    };
+  }
+
+  Future<void> _runWorkflow(
+    BuildContext context,
+    WidgetRef ref,
+    String bookingId,
+    BookingWorkflowAction action,
+  ) async {
+    final notifier = ref.read(
+      _bookingWorkflowStateProvider(bookingId).notifier,
+    );
+    notifier.state = const AsyncLoading();
+    try {
+      await AssignedBookingsRepository(
+        DioProvider().createClient(),
+      ).runWorkflow(bookingId, action);
+      ref.invalidate(bookingDetailsProvider(bookingId));
+      notifier.state = const AsyncData(null);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${_labelFor(action)} successful')),
+      );
+    } catch (error, stackTrace) {
+      notifier.state = AsyncError(error, stackTrace);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => _runWorkflow(context, ref, bookingId, action),
+          ),
+        ),
+      );
+    }
   }
 }
 

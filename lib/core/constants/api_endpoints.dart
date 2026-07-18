@@ -9,10 +9,11 @@ abstract final class ApiEndpoints {
       '/api/driver/bookings/$bookingId';
 
   static String accept(String bookingId) =>
-      '/driver/bookings/$bookingId/accept';
+      '/api/driver/bookings/$bookingId/accept';
 
-  static String start(String bookingId) => '/driver/bookings/$bookingId/start';
+  static String start(String bookingId) =>
+      '/api/driver/bookings/$bookingId/start';
 
   static String complete(String bookingId) =>
-      '/driver/bookings/$bookingId/complete';
+      '/api/driver/bookings/$bookingId/complete';
 }
