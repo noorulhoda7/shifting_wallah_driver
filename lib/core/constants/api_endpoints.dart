@@ -6,7 +6,7 @@ abstract final class ApiEndpoints {
   static const availability = '/driver/availability';
 
   static String bookingDetails(String bookingId) =>
-      '/driver/bookings/$bookingId';
+      '/api/driver/bookings/$bookingId';
 
   static String accept(String bookingId) =>
       '/driver/bookings/$bookingId/accept';
